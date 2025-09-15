@@ -6,60 +6,12 @@ import numpy as np
 import random
 import torch
 from torch.utils.data import DataLoader
+from sklearn.decomposition import PCA
 import torch.nn as nn
 import RL.DQL as DQL
 import numpy as np
 from sklearn.metrics import f1_score,recall_score,precision_score
 from torch.nn import functional as F
-
-
-import torch
-import torch.nn as nn
-
-class _AE(nn.Module):
-    def __init__(self, input_dim: int, latent_dim: int, hidden: int = 512):
-        super().__init__()
-        self.encoder = nn.Sequential(
-            nn.Linear(input_dim, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, latent_dim),
-        )
-        self.decoder = nn.Sequential(
-            nn.Linear(latent_dim, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, input_dim),
-        )
-    def forward(self, x):
-        z = self.encoder(x)
-        x_hat = self.decoder(z)
-        return x_hat, z
-
-def _fit_autoencoder(weight_matrix_np, latent_dim: int, epochs: int = 50, lr: float = 1e-3, device: str | None = None):
-    """Train a tiny autoencoder on flattened weights and return the trained model and encoded latents."""
-    device = torch.device(device or ("cuda" if torch.cuda.is_available() else "cpu"))
-    X = torch.tensor(weight_matrix_np, dtype=torch.float32, device=device)
-    input_dim = X.shape[1]
-    model = _AE(input_dim, latent_dim).to(device)
-    opt = torch.optim.Adam(model.parameters(), lr=lr)
-    loss_fn = nn.MSELoss()
-    model.train()
-    for _ in range(epochs):
-        opt.zero_grad()
-        x_hat, _ = model(X)
-        loss = loss_fn(x_hat, X)
-        loss.backward()
-        opt.step()
-    model.eval()
-    with torch.no_grad():
-        _, Z = model(X)
-    return model, Z.detach().cpu().numpy()
-
-def _ae_transform(model: _AE, vector_np):
-    device = next(model.parameters()).device
-    x = torch.tensor(vector_np, dtype=torch.float32, device=device).reshape(1, -1)
-    with torch.no_grad():
-        _, z = model(x)
-    return z.detach().cpu().numpy()[0]
 
 class Server_FLASHRL(object):
     
@@ -394,9 +346,11 @@ class Server_FLASHRL(object):
                 bandwidth_for_iteration.append(bandwidth_client)
             
         # Apply PCA
-        # Autoencoder latent projection (replacing PCA)
-        _ae_model, weight_list_for_iteration_pca = _fit_autoencoder(np.array(weight_list_for_iteration), latent_dim=len(self.list_clients), epochs=50, lr=1e-3)
-
+        
+        pca = PCA(n_components = len(self.list_clients))
+  
+        # get the weight with PCA
+        weight_list_for_iteration_pca = pca.fit_transform(weight_list_for_iteration)
     
         state_list = []
 
@@ -476,7 +430,7 @@ class Server_FLASHRL(object):
                 weight_local_clients.append(self.flatten(client_w))
 
                 # MAJ des weights PCA
-                state_list[client_index][0] = list(_ae_transform(_ae_model, np.array(self.flatten(copy.deepcopy(client_w)))))
+                state_list[client_index][0] =  list((pca.transform(np.array(self.flatten(copy.deepcopy(client_w))).reshape(1, -1)))[0])
                 
                 # Avoir les parametres du modele locale *  factor
                 client_scaling_factor = self.weight_scalling_factor(self.list_clients[client_index], active_clients) #nk/n'
@@ -521,7 +475,7 @@ class Server_FLASHRL(object):
             loss.append(loss_test)
          
             # Update reduced global parameter 
-            # weight_list_for_iteration_pca[0] updated via AE is not performed here
+            #weight_list_for_iteration_pca[0] =  (pca.transform(np.array(self.flatten(copy.deepcopy(self.model.state_dict()))).reshape(1, -1)))[0]
             
             # Next state
             next_state = self.flatten_state(state_list)
@@ -709,9 +663,11 @@ class Server_FLASHRL(object):
                 numbercores_for_iteration.append(client.numbercores)
                 frequencies_for_iteration.append(frequency_client)
                 bandwidth_for_iteration.append(bandwidth_client)
-        # Autoencoder latent projection (replacing PCA)
-        _ae_model, weight_list_for_iteration_pca = _fit_autoencoder(np.array(weight_list_for_iteration), latent_dim=len(self.list_clients), epochs=50, lr=1e-3)
-
+        
+        pca = PCA(n_components = len(self.list_clients))
+  
+        # get the weight with PCA
+        weight_list_for_iteration_pca = pca.fit_transform(weight_list_for_iteration)
 
         state_list = []
         
@@ -796,7 +752,7 @@ class Server_FLASHRL(object):
                 weight_local_clients.append(self.flatten(client_w))
 
                 # MAJ des weights PCA
-                state_list[client_index][0] = list(_ae_transform(_ae_model, np.array(self.flatten(copy.deepcopy(client_w)))))
+                state_list[client_index][0] =  list((pca.transform(np.array(self.flatten(copy.deepcopy(client_w))).reshape(1, -1)))[0])
                 
                 # Avoir les parametres du modele locale *  factor
                 client_scaling_factor = self.weight_scalling_factor(self.list_clients[client_index], active_clients) #nk/n'
@@ -844,7 +800,7 @@ class Server_FLASHRL(object):
             loss.append(loss_test)
          
             # Update reduced global parameter 
-            # weight_list_for_iteration_pca[0] updated via AE is not performed here
+            #weight_list_for_iteration_pca[0] =  (pca.transform(np.array(self.flatten(copy.deepcopy(self.model.state_dict()))).reshape(1, -1)))[0]
             
             # Next state
             next_state = self.flatten_state(state_list)
