@@ -45,14 +45,14 @@ class DQL:
         self.learning_rate = learning_rate
         
         #define the main network
-        self.main_network = MLP_RL.MLP(self.state_size, 512, self.action_size)
+        self.main_network = MLP_RL.DuelingMLP(self.state_size, 512, self.action_size)
         
         # optimizer
         #self.optimizer = torch.optim.SGD(self.main_network.parameters(), lr= learning_rate , momentum = 0.99)
         self.optimizer = torch.optim.Adam(self.main_network.parameters(), lr = self.learning_rate)
         
         #define the target 
-        self.target_network =  MLP_RL.MLP(self.state_size, 512, self.action_size)
+        self.target_network =  MLP_RL.DuelingMLP(self.state_size, 512, self.action_size)
         
         #copy the weights of the main network to the target network
         self.target_network.load_state_dict(copy.deepcopy(self.main_network.state_dict()))
