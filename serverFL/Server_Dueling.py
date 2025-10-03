@@ -13,11 +13,10 @@ import numpy as np
 from sklearn.metrics import f1_score,recall_score,precision_score
 from torch.nn import functional as F
 
-class Server_FLASHRL(object):
+class Server_dueling(object):
     
     def __init__(self, num_clients, global_model, dict_clients, loss_fct, B, dataset_test, learning_rate, momentum, clients_info):
         """
-        Initialize the Server_FLASHRL object.
 
         Parameters:
         - num_clients: The number of clients in the system.
