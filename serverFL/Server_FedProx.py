@@ -160,16 +160,7 @@ class Server_FedProx(object):
 
         return active_clients
 
-        def flatten(self, weight):
-        '''
-        Flatten the parameters of a model.
-
-        Parameters:
-        - weight: The model weights.
-
-        Returns:
-        - Flattened model weights.
-        '''
+    def flatten(self, weight):
         weight_flatten = []
 
         for param in weight.values():
