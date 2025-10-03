@@ -1,29 +1,42 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 class CNN(nn.Module):
-    def __init__(self, state_size, action_size):
+    def __init__(self, num_channels, out_channels1, out_channels2, num_classes):
+        
         super(CNN, self).__init__()
         
-        # Convolution layers
-        self.conv1 = nn.Conv2d(3, 6, kernel_size=(5, 5), stride=(1, 1))
-        self.maxpool1 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.conv2 = nn.Conv2d(6, 16, kernel_size=(5, 5), stride=(1, 1))
-        self.maxpool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv1 = nn.Conv2d(in_channels = num_channels, out_channels = out_channels1, kernel_size=5, stride = 1)
+        self.maxpool1 = nn.MaxPool2d(kernel_size = 2)
         
-        self.fc1 = nn.Linear(16 * 5 * 5, 256) 
-        self.value_stream = nn.Linear(256, 1)  
-        self.advantage_stream = nn.Linear(256, action_size)  
+        self.conv2 = nn.Conv2d(in_channels = out_channels1, out_channels = out_channels2, kernel_size=5, stride = 1)
+        self.maxpool2 = nn.MaxPool2d(kernel_size = 2)
+        
 
-    def forward(self, x):
-        x = F.relu(self.conv1(x))
+        self.fc1 = nn.Linear(400, 256)
+        self.fc2 = nn.Linear(256, num_classes)
+
+    def forward(self,x):
+        #first Convolutional layer
+        x = self.conv1(x)
+        #activation function 
+        x = F.relu(x)
+        #max pooling 
         x = self.maxpool1(x)
-        x = F.relu(self.conv2(x))
+        #first Convolutional layer
+        x = self.conv2(x)
+        #activation function
+        x = F.relu(x)
+        #max pooling
         x = self.maxpool2(x)
+        #flatten output 
+        x = torch.flatten(x,1)
+        #fully connected layer 1
+        x =self.fc1(x)
+        #activation function
+        x = F.relu(x)
+        #fully connected layer 2
+        x = self.fc2(x)
         
-        x = x.view(x.size(0), -1) 
-        x = F.relu(self.fc1(x))
-        
-        value = self.value_stream(x)
-        advantage = self.advantage_stream(x)
-        q_values = value + (advantage - advantage.mean())
-        return q_values
+        return x
