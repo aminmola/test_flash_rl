@@ -450,7 +450,7 @@ class Server_FedProx(object):
         return dict_result
 
 
-   def test(self, type_data):
+    def test(self, type_data):
         """
         Test the global model on the specified type of data.
 
